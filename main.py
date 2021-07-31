@@ -102,15 +102,18 @@ def find_chapters_url(driver):
 
     return chapters_url_name_list
 
+# setting variable
+command_executor = 'http://172.27.0.2:4444/wd/hub'
+comic_url = 'https://www.manhuagui.com/comic/39235/'
 
 # chrome driver setting
 options = webdriver.ChromeOptions()
 driver = webdriver.Remote(
-    command_executor='http://172.27.0.2:4444/wd/hub',
+    command_executor=command_executor,
     options=options
 )
 
-driver.get('https://www.manhuagui.com/comic/39235/')
+driver.get(comic_url)
 chapters_url_name_list = find_chapters_url(driver)
 print('Chapters list: ' + chapters_url_name_list)
 
