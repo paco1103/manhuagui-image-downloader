@@ -76,18 +76,24 @@ def save_img(img_dir_path, img_url_list):
         'Referer': 'https://www.manhuagui.com',
     }
 
-    #pop the third img, becasue it is same as second img
-    img_url_list.pop(2)
-
     for idx, url in enumerate(img_url_list):
+        #skip the third img, becasue it is same as second img
+        if idx == 2:
+            continue
+
         response = requests.get(url, headers=headers, stream=True)
         image = Image.open(io.BytesIO(response.content))
         response.close()
+        
+        #px to mm
+        width, height = (i * 0.264583 for i in image.size)
+        print(width, height)
 
-        fname = img_dir_path + '/' + str(idx+1) + '.jpg'
-        image.save(fname)
-        print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
-        time.sleep(random.uniform(0.5, 3.0))
+
+        # fname = img_dir_path + '/' + str(idx+1) + '.jpg'
+        # image.save(fname)
+        # print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
+        # time.sleep(random.uniform(0.5, 3.0))
 
 
 def find_chapters_url(driver, roll_only=False):
@@ -119,35 +125,42 @@ command_executor = 'http://172.20.0.3:4444/wd/hub'
 comic_url = 'https://www.manhuagui.com/comic/41237/'
 roll_only = False
 
-try:
-    # chrome driver setting
-    options = webdriver.ChromeOptions()
-    driver = webdriver.Remote(
-        command_executor=command_executor,
-        options=options
-    )
 
-    driver.get(comic_url)
-    chapters_url_name_list = find_chapters_url(driver, roll_only=roll_only)
-
-    print('Chapters list: ', chapters_url_name_list)
-
-    for chapter in chapters_url_name_list:
-        driver.get(chapter['url'])
-        print('Getting chapter: ' + chapter['name'])
-
-        time.sleep(random.uniform(10.0, 15.0))
-        html = find_full_chapter_html(driver)
-        print('Chapter full html complete!')
-
-        img_url_list = find_all_img_src(html)
-        save_img(chapter['name'], img_url_list)
-        print('Chapter saving complete!')
+#TODO remove
+img_dir = '第02话'
+img_url_list = ['https://i.hamreus.com/ps3/l/lt-17457/zdxj/第02话/01a.jpg.webp?e=1629366072&m=5rEun6Q1A-Wj_MjOwaZGzA']
+save_img(img_dir, img_url_list)
 
 
-except Exception as e:
-    print('Exception:', e)
+# try:
+#     # chrome driver setting
+#     options = webdriver.ChromeOptions()
+#     driver = webdriver.Remote(
+#         command_executor=command_executor,
+#         options=options
+#     )
 
-finally:
-    # quit driver
-    driver.quit()
+#     driver.get(comic_url)
+#     chapters_url_name_list = find_chapters_url(driver, roll_only=roll_only)
+
+#     print('Chapters list: ', chapters_url_name_list)
+
+#     for chapter in chapters_url_name_list:
+#         driver.get(chapter['url'])
+#         print('Getting chapter: ' + chapter['name'])
+
+#         time.sleep(random.uniform(10.0, 15.0))
+#         html = find_full_chapter_html(driver)
+#         print('Chapter full html complete!')
+
+#         img_url_list = find_all_img_src(html)
+#         save_img(chapter['name'], img_url_list)
+#         print('Chapter saving complete!')
+
+
+# except Exception as e:
+#     print('Exception:', e)
+
+# finally:
+#     # quit driver
+#     driver.quit()
