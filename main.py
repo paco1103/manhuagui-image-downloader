@@ -175,9 +175,10 @@ def convert2pdf(img_dir_path, pdf_name_path):
 
 # setting variable
 command_executor = 'http://172.20.0.3:4444/wd/hub'
-comic_url = 'https://www.manhuagui.com/comic/41237/'
+comic_url = 'https://www.manhuagui.com/comic/29619/'
 roll_only = False
 create_pdf = True
+base_path = '彼方的阿斯特拉/'
 
 try:
     # chrome driver setting
@@ -193,6 +194,8 @@ try:
     print('Chapters list: ', chapters_url_name_list)
 
     for chapter in chapters_url_name_list:
+        save_dir_path = base_path + chapter['name'] + '/'
+
         driver.get(chapter['url'])
         print('Getting chapter: ' + chapter['name'])
 
@@ -201,10 +204,10 @@ try:
 
         img_url_list = find_all_img_src(html)
         
-        save_img(chapter['name'] + '/', img_url_list)
+        save_img(save_dir_path, img_url_list)
 
         if create_pdf:
-            convert2pdf(chapter['name'] + '/', chapter['name'] + '.pdf')
+            convert2pdf(save_dir_path, base_path + chapter['name'] + '.pdf')
 
 except Exception as e:
     print('Exception:', e)
