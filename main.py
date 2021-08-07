@@ -79,8 +79,9 @@ def find_chapters_url(driver, roll_only=False):
     html = driver.page_source
     soup = BeautifulSoup(html, features='html.parser')
 
-    chapter_list = soup.find_all("div", {"class": "chapter-list"})
+    comic_name_path = soup.select_one('.book-title h1').text + '/'
 
+    chapter_list = soup.find_all("div", {"class": "chapter-list"})
     # loop through the chapter list
     for chapters in chapter_list:
         for chapter in chapters.find_all('a'):
@@ -94,7 +95,7 @@ def find_chapters_url(driver, roll_only=False):
             }
             chapters_url_name_list.append(url_name_dict)
 
-    return chapters_url_name_list
+    return comic_name_path, chapters_url_name_list
 
 
 # Get image from i.harmreus.com and save
@@ -128,8 +129,6 @@ def convert2pdf(img_dir_path, pdf_name_path):
 
     img_path_list = [img_dir_path + img for img in list(os.listdir(img_dir_path))]
     img_path_list = natsorted(img_path_list)
-
-    print(img_path_list)
 
     pdf_padding = 4
     pdf = FPDF()
@@ -174,11 +173,10 @@ def convert2pdf(img_dir_path, pdf_name_path):
 
 
 # setting variable
-command_executor = 'http://172.20.0.3:4444/wd/hub'
-comic_url = 'https://www.manhuagui.com/comic/29619/'
+command_executor = 'http://172.20.0.2:4444/wd/hub'
+comic_url = 'https://tw.manhuagui.com/comic/2032/'
 roll_only = False
 create_pdf = True
-base_path = '彼方的阿斯特拉/'
 
 try:
     # chrome driver setting
@@ -189,7 +187,9 @@ try:
     )
 
     driver.get(comic_url)
-    chapters_url_name_list = find_chapters_url(driver, roll_only=roll_only)
+    base_path, chapters_url_name_list = find_chapters_url(driver, roll_only=roll_only)
+
+
 
     print('Chapters list: ', chapters_url_name_list)
 
