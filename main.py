@@ -73,7 +73,7 @@ def find_all_img_src(html):
 
 
 def find_chapters_url(driver, roll_only=False):
-    chapters_url_name_list = []
+    chapters_obj_list = []
 
     click_confirm_button(driver)
     html = driver.page_source
@@ -81,31 +81,39 @@ def find_chapters_url(driver, roll_only=False):
 
     comic_name_path = soup.select_one('.book-title h1').text + '/'
 
-    chapter_list = soup.find_all("div", {"class": "chapter-list"})
+    chapter_list = soup.select('.chapter-list ul')
+
     # loop through the chapter list
     for chapters in chapter_list:
-        for chapter in chapters.find_all('a'):
+        for li in chapters.find_all('li'):
+
+            a = li.find('a')
+
             # check only get 第n卷
-            if roll_only and '卷' not in chapter['title']:
+            if roll_only and '卷' not in a['title']:
                 continue
 
-            url_name_dict = {
-                'url': 'https://www.manhuagui.com/' + chapter['href'],
-                'name': chapter['title']
+            details = {
+                'url': 'https://www.manhuagui.com/' + a['href'],
+                'name': a['title'],
+                'total_page': int(li.find('i').text.replace('p', '')),
+                'download_page': 0,
+                'img_url_list': []
             }
-            chapters_url_name_list.append(url_name_dict)
+            chapters_obj_list.append(details)
 
-    return comic_name_path, chapters_url_name_list
+    return comic_name_path, chapters_obj_list
 
 
 # Get image from i.harmreus.com and save
-def save_img(img_dir_path, img_url_list):
+def save_img(img_dir_path, chapter):
     Path(img_dir_path).mkdir(parents=True, exist_ok=True)
 
     headers = {
         'Referer': 'https://www.manhuagui.com',
     }
 
+    img_url_list = chapter['img_url_list']
     # pop the third img, becasue it is same as second img
     img_url_list.pop(2)
 
@@ -116,10 +124,13 @@ def save_img(img_dir_path, img_url_list):
 
         fname = img_dir_path + str(idx+1) + '.jpg'
         image.save(fname)
+        chapter['download_page'] = chapter['download_page'] + 1
+
         print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
         time.sleep(random.uniform(0.5, 3.0))
 
     print('Chapter saving complete!')
+    return chapter
 
 
 # TODO, modify to save from memory
@@ -127,7 +138,8 @@ def save_img(img_dir_path, img_url_list):
 def convert2pdf(img_dir_path, pdf_name_path):
     print('PDF creating...')
 
-    img_path_list = [img_dir_path + img for img in list(os.listdir(img_dir_path))]
+    img_path_list = [img_dir_path +
+                     img for img in list(os.listdir(img_dir_path))]
     img_path_list = natsorted(img_path_list)
 
     pdf_padding = 4
@@ -136,13 +148,13 @@ def convert2pdf(img_dir_path, pdf_name_path):
     for img_path in img_path_list:
         image = Image.open(img_path)
 
-        #dpi to mm
+        # dpi to mm
         width, height = (i * 0.264583 for i in image.size)
 
-        # given we are working with A4 format size 
+        # given we are working with A4 format size
         pdf_size = {'P': {'w': 210, 'h': 297}, 'L': {'w': 297, 'h': 210}}
 
-        # get page orientation from image size 
+        # get page orientation from image size
         orientation = 'P' if width < height else 'L'
         pdf.add_page(orientation=orientation)
 
@@ -155,28 +167,31 @@ def convert2pdf(img_dir_path, pdf_name_path):
         #     height = height if height < pdf_size[orientation]['h'] else pdf_size[orientation]['h']
         # else:
         #     resize = True if width > pdf_size[orientation]['w'] or height > pdf_size[orientation]['h'] else False
-            
+
         #     if resize:
         #         width_resize_percent = (width - pdf_size[orientation]['w']) / width
         #         height_resize_percent = (height - pdf_size[orientation]['h']) / height
 
         #         resize_percent = width_resize_percent if width_resize_percent > height_resize_percent else height_resize_percent
-                
+
         #         width = width * resize_percent
         #         height = height * resize_percent
-            
+
         # TODO image rotate and save by image type
-        pdf.image(img_path, pdf_padding, pdf_padding, width-pdf_padding*2, height-pdf_padding*2)
+        pdf.image(img_path, pdf_padding, pdf_padding,
+                  width-pdf_padding*2, height-pdf_padding*2)
 
     pdf.output(pdf_name_path, 'F')
     print('PDF completed.')
 
 
 # setting variable
-command_executor = 'http://172.20.0.2:4444/wd/hub'
-comic_url = 'https://tw.manhuagui.com/comic/2032/'
+command_executor = 'http://172.20.0.3:4444/wd/hub'
+comic_url = 'https://tw.manhuagui.com/comic/15421/'
 roll_only = False
 create_pdf = True
+base_path = ''
+chapters_obj_list = []
 
 try:
     # chrome driver setting
@@ -187,24 +202,24 @@ try:
     )
 
     driver.get(comic_url)
-    base_path, chapters_url_name_list = find_chapters_url(driver, roll_only=roll_only)
+    base_path, chapters_obj_list = find_chapters_url(
+        driver, roll_only=roll_only)
 
+    print('Chapters list: ', chapters_obj_list)
 
-
-    print('Chapters list: ', chapters_url_name_list)
-
-    for chapter in chapters_url_name_list:
+    for idx, chapter in enumerate(chapters_obj_list):
         save_dir_path = base_path + chapter['name'] + '/'
 
         driver.get(chapter['url'])
         print('Getting chapter: ' + chapter['name'])
 
         time.sleep(random.uniform(10.0, 15.0))
+
         html = find_full_chapter_html(driver)
 
-        img_url_list = find_all_img_src(html)
-        
-        save_img(save_dir_path, img_url_list)
+        chapter['img_url_list'] = find_all_img_src(html)
+
+        chapters_obj_list[idx] = save_img(save_dir_path, chapter)
 
         if create_pdf:
             convert2pdf(save_dir_path, base_path + chapter['name'] + '.pdf')
@@ -215,3 +230,28 @@ except Exception as e:
 finally:
     # quit driver
     driver.quit()
+
+    # downloaded comic verify
+    for chapter in chapters_obj_list:
+        is_complete = 'OK!' if chapter['download_page'] == chapter['total_page'] else 'Error, please download again!'
+        print(chapter['name'] + ': ' + str(chapter['download_page']) + '/' + str(chapter['total_page']) + '\t\t' + is_complete)
+
+
+
+
+# TODO
+# #Exception: Message: java.util.concurrent.TimeoutException
+# Chapter saving complete!
+# PDF creating...
+# PDF completed.
+# Getting chapter: 第20回
+# Chapter full html complete!
+# Img saved:1/5
+# Img saved:2/5
+# Img saved:3/5
+# Img saved:4/5
+# Img saved:5/5
+# Chapter saving complete!
+# PDF creating...
+# PDF completed.
+# Exception: Message: java.util.concurrent.TimeoutException
