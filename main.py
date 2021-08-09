@@ -40,7 +40,8 @@ def find_full_chapter_html(driver):
         last_height = driver.execute_script(
             'return document.body.scrollHeight')
         while True:
-            driver.execute_script('window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });')
+            driver.execute_script(
+                'window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });')
 
             time.sleep(random.uniform(8.0, 12.0))
 
@@ -199,6 +200,7 @@ comic_url = 'https://www.manhuagui.com/comic/5025/'
 roll_only = False
 create_pdf = True
 base_path = ''
+selected_chapter_list = []  # e.g. ['第05回']
 chapters_obj_list = []
 
 try:
@@ -209,13 +211,22 @@ try:
         options=options
     )
 
+    # get comic all chapter data
     driver.get(comic_url)
     base_path, chapters_obj_list = find_chapters_url(
         driver, roll_only=roll_only)
 
+    # skip only select some chpater
+    if len(selected_chapter_list) != 0:
+        temp_chapters_obj_list = []
+        for chapter in chapters_obj_list:
+            if chapter['name'] in selected_chapter_list:
+                temp_chapters_obj_list.append(chapter)
+        chapters_obj_list = temp_chapters_obj_list
 
     print('Chapters list: ', chapters_obj_list)
 
+    # main of get chpater image url and download
     for idx, chapter in enumerate(chapters_obj_list):
         save_dir_path = base_path + chapter['name'] + '/'
 
@@ -243,4 +254,5 @@ finally:
     # downloaded comic verify
     for chapter in chapters_obj_list:
         is_complete = 'OK!' if chapter['download_page'] == chapter['total_page'] else 'Error, please download again!'
-        print(chapter['name'] + ': ' + str(chapter['download_page']) + '/' + str(chapter['total_page']) + '\t\t' + is_complete)
+        print(chapter['name'] + ': ' + str(chapter['download_page']) +
+              '/' + str(chapter['total_page']) + '\t\t' + is_complete)
