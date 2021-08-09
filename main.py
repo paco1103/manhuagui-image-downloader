@@ -40,8 +40,7 @@ def find_full_chapter_html(driver):
         last_height = driver.execute_script(
             'return document.body.scrollHeight')
         while True:
-            driver.execute_script(
-                'window.scrollTo(0, document.body.scrollHeight);')
+            driver.execute_script('window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });')
 
             time.sleep(random.uniform(8.0, 12.0))
 
@@ -118,16 +117,25 @@ def save_img(img_dir_path, chapter):
     img_url_list.pop(2)
 
     for idx, url in enumerate(img_url_list):
-        response = requests.get(url, headers=headers, stream=True)
-        image = Image.open(io.BytesIO(response.content))
-        response.close()
+        try_again = True
+        while try_again:
+            try:
+                response = requests.get(url, headers=headers, stream=True)
+                image = Image.open(io.BytesIO(response.content))
+                response.close()
 
-        fname = img_dir_path + str(idx+1) + '.jpg'
-        image.save(fname)
-        chapter['download_page'] = chapter['download_page'] + 1
+                fname = img_dir_path + str(idx+1) + '.jpg'
+                image.save(fname)
+                chapter['download_page'] = chapter['download_page'] + 1
 
-        print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
-        time.sleep(random.uniform(0.5, 3.0))
+                print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
+                time.sleep(random.uniform(1.5, 3.0))
+                try_again = False
+
+            except:
+                print('Fail, auto download again')
+                try_again = True
+                time.sleep(10)
 
     print('Chapter saving complete!')
     return chapter
@@ -187,7 +195,7 @@ def convert2pdf(img_dir_path, pdf_name_path):
 
 # setting variable
 command_executor = 'http://172.20.0.3:4444/wd/hub'
-comic_url = 'https://tw.manhuagui.com/comic/15421/'
+comic_url = 'https://www.manhuagui.com/comic/5025/'
 roll_only = False
 create_pdf = True
 base_path = ''
@@ -204,6 +212,7 @@ try:
     driver.get(comic_url)
     base_path, chapters_obj_list = find_chapters_url(
         driver, roll_only=roll_only)
+
 
     print('Chapters list: ', chapters_obj_list)
 
@@ -235,23 +244,3 @@ finally:
     for chapter in chapters_obj_list:
         is_complete = 'OK!' if chapter['download_page'] == chapter['total_page'] else 'Error, please download again!'
         print(chapter['name'] + ': ' + str(chapter['download_page']) + '/' + str(chapter['total_page']) + '\t\t' + is_complete)
-
-
-
-
-# TODO
-# #Exception: Message: java.util.concurrent.TimeoutException
-# Chapter saving complete!
-# PDF creating...
-# PDF completed.
-# Getting chapter: 第20回
-# Chapter full html complete!
-# Img saved:1/5
-# Img saved:2/5
-# Img saved:3/5
-# Img saved:4/5
-# Img saved:5/5
-# Chapter saving complete!
-# PDF creating...
-# PDF completed.
-# Exception: Message: java.util.concurrent.TimeoutException
