@@ -195,12 +195,13 @@ def convert2pdf(img_dir_path, pdf_name_path):
 
 
 # setting variable
-command_executor = 'http://172.20.0.3:4444/wd/hub'
-comic_url = 'https://www.manhuagui.com/comic/5025/'
+command_executor = 'http://172.20.0.2:4444/' + 'wd/hub'
+comic_url = 'https://tw.manhuagui.com/comic/5771/'
 roll_only = False
 create_pdf = True
 base_path = ''
 selected_chapter_list = []  # e.g. ['第05回']
+skip_chapter_list = []  # e.g. ['第06回']
 chapters_obj_list = []
 
 try:
@@ -216,13 +217,13 @@ try:
     base_path, chapters_obj_list = find_chapters_url(
         driver, roll_only=roll_only)
 
-    # skip only select some chpater
-    if len(selected_chapter_list) != 0:
-        temp_chapters_obj_list = []
-        for chapter in chapters_obj_list:
-            if chapter['name'] in selected_chapter_list:
-                temp_chapters_obj_list.append(chapter)
-        chapters_obj_list = temp_chapters_obj_list
+    # only append the selected chpater
+    chapters_obj_list = chapters_obj_list if len(selected_chapter_list) == 0 else [
+        chapter for chapter in chapters_obj_list if chapter['name'] in selected_chapter_list]
+
+    # remove all the skip chapter
+    chapters_obj_list = chapters_obj_list if len(skip_chapter_list) == 0 else [
+        chapter for chapter in chapters_obj_list if not chapter['name'] in skip_chapter_list]
 
     print('Chapters list: ', chapters_obj_list)
 
