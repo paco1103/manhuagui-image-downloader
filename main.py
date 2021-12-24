@@ -217,7 +217,7 @@ def downlist_update(comic_obj_list=None, replace=False):
 
 
 # setting variable
-command_executor = 'http://172.20.0.3:4444/' + 'wd/hub'
+command_executor = 'http://172.20.0.2:4444/' + 'wd/hub'
 
 try:
     # chrome driver setting
@@ -306,7 +306,7 @@ try:
 
                         # create pdf
                         if comic['create_pdf']:
-                            convert2pdf(save_dir_path, base_path +
+                            convert2pdf(save_dir_path, base_path + comic['name'] + ' ' +
                                         chapter['name'] + '.pdf')
 
                         # update downlist.json
