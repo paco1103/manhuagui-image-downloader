@@ -2,8 +2,6 @@ import requests
 from PIL import Image
 import io
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import time
 import sys
 import os
@@ -12,18 +10,6 @@ from pathlib import Path
 from fpdf import FPDF
 from natsort import natsorted
 import json
-
-# check if the button is exist, return true false
-
-
-def click_confirm_button(driver):
-    try:
-        driver.find_element_by_id('checkAdult')
-    except Exception as e:
-        return
-    confirm_btn = driver.find_element_by_id('checkAdult')
-    confirm_btn.click()
-    return
 
 
 # get full HTML code, return html
@@ -43,7 +29,8 @@ def find_full_chapter_html(driver):
             'return document.body.scrollHeight')
         while True:
             driver.execute_script(
-                'window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });')
+                'window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });'
+            )
 
             time.sleep(random.uniform(8.0, 12.0))
 
@@ -128,11 +115,12 @@ def save_img(img_dir_path, chapter):
                 image = Image.open(io.BytesIO(response.content))
                 response.close()
 
-                fname = img_dir_path + str(idx+1) + '.jpg'
+                fname = img_dir_path + str(idx + 1) + '.jpg'
                 image.save(fname)
                 download_page += 1
 
-                print('Img saved:' + str(idx+1) + '/' + str(len(img_url_list)))
+                print('Img saved:' + str(idx + 1) + '/' +
+                      str(len(img_url_list)))
                 time.sleep(random.uniform(1.5, 3.0))
                 try_again = False
 
@@ -150,8 +138,9 @@ def save_img(img_dir_path, chapter):
 def convert2pdf(img_dir_path, pdf_name_path):
     print('PDF creating...')
 
-    img_path_list = [img_dir_path +
-                     img for img in list(os.listdir(img_dir_path))]
+    img_path_list = [
+        img_dir_path + img for img in list(os.listdir(img_dir_path))
+    ]
     img_path_list = natsorted(img_path_list)
 
     pdf_padding = 4
@@ -170,8 +159,10 @@ def convert2pdf(img_dir_path, pdf_name_path):
         orientation = 'P' if width < height else 'L'
         pdf.add_page(orientation=orientation)
 
-        width = width if width < pdf_size[orientation]['w'] else pdf_size[orientation]['w']
-        height = height if height < pdf_size[orientation]['h'] else pdf_size[orientation]['h']
+        width = width if width < pdf_size[orientation]['w'] else pdf_size[
+            orientation]['w']
+        height = height if height < pdf_size[orientation]['h'] else pdf_size[
+            orientation]['h']
 
         # if orientation == 'P':
         #     # make sure image size is not greater than the pdf format size
@@ -190,8 +181,8 @@ def convert2pdf(img_dir_path, pdf_name_path):
         #         height = height * resize_percent
 
         # TODO image rotate and save by image type
-        pdf.image(img_path, pdf_padding, pdf_padding,
-                  width-pdf_padding*2, height-pdf_padding*2)
+        pdf.image(img_path, pdf_padding, pdf_padding, width - pdf_padding * 2,
+                  height - pdf_padding * 2)
 
     pdf.output(pdf_name_path, 'F')
     print('PDF completed.')
@@ -217,17 +208,9 @@ def downlist_update(comic_obj_list=None, replace=False):
 
 
 # setting variable
-command_executor = 'http://172.20.0.2:4444/' + 'wd/hub'
 
 try:
-    # chrome driver setting
-    options = webdriver.ChromeOptions()
-    driver = webdriver.Remote(
-        command_executor=command_executor,
-        options=options
-    )
-
-    while(True):
+    while (True):
         action = int(input('Input action 1=get url, 2=download, 3=exit: '))
 
         # getting chapger data
@@ -245,22 +228,29 @@ try:
                 driver, roll_only=roll_only)
 
             # print all chapter name
-            print('All chapter: ', [chapter['name']
-                  for chapter in chapters_obj_list])
+            print('All chapter: ',
+                  [chapter['name'] for chapter in chapters_obj_list])
 
             # only append the selected chpater
             input_chapter_list = input(
-                'Input the purpose chapter(empty = all)(example: 第05回,第01回): ').split(',')
+                'Input the purpose chapter(empty = all)(example: 第05回,第01回): '
+            ).split(',')
 
-            chapters_obj_list = chapters_obj_list if input_chapter_list[0] == '' else [
-                chapter for chapter in chapters_obj_list if chapter['name'] in input_chapter_list]
+            chapters_obj_list = chapters_obj_list if input_chapter_list[
+                0] == '' else [
+                    chapter for chapter in chapters_obj_list
+                    if chapter['name'] in input_chapter_list
+                ]
 
             # remove all the skip chapter
             input_chapter_list = input(
                 'Input the skipping chapter(example: 第05回,第01回): ').split(',')
 
-            chapters_obj_list = chapters_obj_list if input_chapter_list[0] == '' else [
-                chapter for chapter in chapters_obj_list if not chapter['name'] in input_chapter_list]
+            chapters_obj_list = chapters_obj_list if input_chapter_list[
+                0] == '' else [
+                    chapter for chapter in chapters_obj_list
+                    if not chapter['name'] in input_chapter_list
+                ]
 
             # ask create pdf and save to json
             create_pdf = True if input(
@@ -287,7 +277,7 @@ try:
                     for chapter_idx, chapter in enumerate(comic['chapter']):
 
                         save_dir_path = base_path + chapter['name'] + '/'
-                        
+
                         print('Getting chapter: ' + chapter['name'])
 
                         driver.get(chapter['url'])
@@ -297,17 +287,20 @@ try:
 
                         # get chapter image src
                         chapter['img_url_list'] = find_all_img_src(html)
-                        comic_obj_list[comic_idx]['chapter'][chapter_idx] = chapter
+                        comic_obj_list[comic_idx]['chapter'][
+                            chapter_idx] = chapter
 
                         # donwload image and get teh number of downloaded page
                         chapter['download_page'] = save_img(
                             save_dir_path, chapter)
-                        comic_obj_list[comic_idx]['chapter'][chapter_idx] = chapter
+                        comic_obj_list[comic_idx]['chapter'][
+                            chapter_idx] = chapter
 
                         # create pdf
                         if comic['create_pdf']:
-                            convert2pdf(save_dir_path, base_path + comic['name'] + ' ' +
-                                        chapter['name'] + '.pdf')
+                            convert2pdf(
+                                save_dir_path, base_path + comic['name'] +
+                                ' ' + chapter['name'] + '.pdf')
 
                         # update downlist.json
                         downlist_update(comic_obj_list, replace=True)
@@ -333,14 +326,16 @@ finally:
 
             print(comic['name'])
             for chapter in comic['chapter']:
-                is_complete = True if chapter['download_page'] == chapter['total_page'] else False
+                is_complete = True if chapter['download_page'] == chapter[
+                    'total_page'] else False
                 is_complete_message = 'OK!' if is_complete else 'Error, please download again!'
 
                 if not is_complete:
                     not_finish_chapter_list.append(chapter)
 
                 print(chapter['name'] + ': ' + str(chapter['download_page']) +
-                      '/' + str(chapter['total_page']) + '\t\t' + is_complete_message)
+                      '/' + str(chapter['total_page']) + '\t\t' +
+                      is_complete_message)
 
             # update not download chpater list
             comic_obj_list[comic_idx]['chapter'] = not_finish_chapter_list
