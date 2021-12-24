@@ -60,8 +60,9 @@ def find_chapter_img_src(url, num_page):
 
         response.close()
         img_url_list.append(img_tag[0]['src'])
-        print('Img got:'+str(image_idx)+'/'+str(num_page))
         time.sleep(random.uniform(0.5, 2.0))
+
+    session.close()
 
     return img_url_list
 
@@ -91,7 +92,7 @@ def save_img(img_dir_path, chapter):
 
                 print('Img saved:' + str(idx + 1) + '/' +
                       str(len(img_url_list)))
-                time.sleep(random.uniform(1.5, 3.0))
+                time.sleep(random.uniform(0.5, 2.0))
                 try_again = False
 
             except:
@@ -231,7 +232,7 @@ try:
 
                         print('Getting chapter: ', comic['name'], chapter['name'])
                         #wait until next chapter scraping
-                        #time.sleep(random.uniform(10.0, 15.0))
+                        time.sleep(random.uniform(5.0, 10.0))
 
                         # get chapter image src
                         chapter['img_url_list'] = find_chapter_img_src(
