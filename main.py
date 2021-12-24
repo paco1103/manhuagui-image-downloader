@@ -10,63 +10,16 @@ from pathlib import Path
 from fpdf import FPDF
 from natsort import natsorted
 import json
+from requests_html import HTMLSession
 
 
-# get full HTML code, return html
-def find_full_chapter_html(driver):
-    html = ''
-
-    try:
-        click_confirm_button(driver)
-
-        scorll_down_btn = driver.find_element_by_xpath(
-            "//a[contains(@onclick,'SMH.setFunc(3)')]")
-        scorll_down_btn.click()
-
-        time.sleep(5)
-
-        last_height = driver.execute_script(
-            'return document.body.scrollHeight')
-        while True:
-            driver.execute_script(
-                'window.scrollTo({ top: document.body.scrollHeight, left: 0, behavior: "smooth" });'
-            )
-
-            time.sleep(random.uniform(8.0, 12.0))
-
-            new_height = driver.execute_script(
-                'return document.body.scrollHeight')
-            if new_height == last_height:
-                break
-            last_height = new_height
-
-        html = driver.page_source
-        print('Chapter full html complete!')
-
-    except Exception as e:
-        print(e)
-
-    return html
-
-
-# Get all image url from html, return list of img url
-def find_all_img_src(html):
-    img_url_list = []
-    soup = BeautifulSoup(html, features='html.parser')
-
-    for img_tag in soup.find_all('img'):
-        if 'https://i.hamreus.com' in img_tag['src']:
-            img_url_list.append(img_tag['src'])
-
-    return img_url_list
-
-
-def find_chapters_url(driver, roll_only=False):
+#Step 1: Get comic all charpter url
+def find_chapters_url(comic_url, roll_only=False):
     chapters_obj_list = []
 
-    click_confirm_button(driver)
-    html = driver.page_source
-    soup = BeautifulSoup(html, features='html.parser')
+    response = requests.get(comic_url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    response.close()
 
     comic_name = soup.select_one('.book-title h1').text
 
@@ -90,8 +43,27 @@ def find_chapters_url(driver, roll_only=False):
                 'img_url_list': []
             }
             chapters_obj_list.append(details)
-
     return comic_name, chapters_obj_list
+
+
+#Step 2: find the chapter image url
+def find_chapter_img_src(url, num_page):
+    img_url_list = []
+    session = HTMLSession()
+
+    for image_idx in range(1, num_page + 1):
+        response = session.get(url + '#p=' + str(image_idx))
+        response.html.render()
+
+        soup = BeautifulSoup(response.html.html, features='html.parser')
+        img_tag = soup.select('#mangaBox img')
+
+        response.close()
+        img_url_list.append(img_tag[0]['src'])
+        print('Img got:'+str(image_idx)+'/'+str(num_page))
+        time.sleep(random.uniform(0.5, 2.0))
+
+    return img_url_list
 
 
 # Get image from i.harmreus.com and save
@@ -99,13 +71,11 @@ def save_img(img_dir_path, chapter):
     Path(img_dir_path).mkdir(parents=True, exist_ok=True)
 
     headers = {
-        'Referer': 'https://www.manhuagui.com',
+        'Referer': 'https://tw.manhuagui.com',
     }
 
     download_page = 0
     img_url_list = chapter['img_url_list']
-    # pop the third img, becasue it is same as second img
-    img_url_list.pop(2)
 
     for idx, url in enumerate(img_url_list):
         try_again = True
@@ -127,7 +97,7 @@ def save_img(img_dir_path, chapter):
             except:
                 print('Fail, auto download again')
                 try_again = True
-                time.sleep(10)
+                time.sleep(5)
 
     print('Chapter saving complete!')
     return download_page
@@ -164,23 +134,6 @@ def convert2pdf(img_dir_path, pdf_name_path):
         height = height if height < pdf_size[orientation]['h'] else pdf_size[
             orientation]['h']
 
-        # if orientation == 'P':
-        #     # make sure image size is not greater than the pdf format size
-        #     width = width if width < pdf_size[orientation]['w'] else pdf_size[orientation]['w']
-        #     height = height if height < pdf_size[orientation]['h'] else pdf_size[orientation]['h']
-        # else:
-        #     resize = True if width > pdf_size[orientation]['w'] or height > pdf_size[orientation]['h'] else False
-
-        #     if resize:
-        #         width_resize_percent = (width - pdf_size[orientation]['w']) / width
-        #         height_resize_percent = (height - pdf_size[orientation]['h']) / height
-
-        #         resize_percent = width_resize_percent if width_resize_percent > height_resize_percent else height_resize_percent
-
-        #         width = width * resize_percent
-        #         height = height * resize_percent
-
-        # TODO image rotate and save by image type
         pdf.image(img_path, pdf_padding, pdf_padding, width - pdf_padding * 2,
                   height - pdf_padding * 2)
 
@@ -192,7 +145,7 @@ def downlist_update(comic_obj_list=None, replace=False):
     # read existed list
     if not replace:
         try:
-            with open('downlist.json', 'r') as f:
+            with open('downlist.json', 'r', encoding="utf-8") as f:
                 if comic_obj_list != None:
                     comic_obj_list += json.load(f)
                 else:
@@ -201,14 +154,13 @@ def downlist_update(comic_obj_list=None, replace=False):
             print('downlist.json not exist, auto create')
 
     # update list
-    with open('downlist.json', 'w') as f:
+    with open('downlist.json', 'w', encoding="utf-8") as f:
         json.dump(comic_obj_list, f, ensure_ascii=False, indent=4)
 
     return comic_obj_list
 
 
 # setting variable
-
 try:
     while (True):
         action = int(input('Input action 1=get url, 2=download, 3=exit: '))
@@ -222,14 +174,13 @@ try:
                 'Roll only? (True/False) ') == 'True' else False
 
             # get comic all chapter data
-            print('strat getting')
-            driver.get(comic_url)
-            comic_name, chapters_obj_list = find_chapters_url(
-                driver, roll_only=roll_only)
+            print('start getting')
+            comic_name, chapters_obj_list = find_chapters_url(comic_url,
+                                                            roll_only=roll_only)
 
             # print all chapter name
             print('All chapter: ',
-                  [chapter['name'] for chapter in chapters_obj_list])
+                [chapter['name'] for chapter in chapters_obj_list])
 
             # only append the selected chpater
             input_chapter_list = input(
@@ -253,8 +204,8 @@ try:
                 ]
 
             # ask create pdf and save to json
-            create_pdf = True if input(
-                'Create PDF?  (True/False) ') == 'True' else False
+            create_pdf = False if input(
+                'Create PDF?  (True/False) ') == 'False' else True
             comic_obj_list = [{
                 'name': comic_name,
                 'create_pdf': create_pdf,
@@ -278,43 +229,37 @@ try:
 
                         save_dir_path = base_path + chapter['name'] + '/'
 
-                        print('Getting chapter: ' + chapter['name'])
-
-                        driver.get(chapter['url'])
-                        time.sleep(random.uniform(10.0, 15.0))
-
-                        html = find_full_chapter_html(driver)
+                        print('Getting chapter: ', comic['name'], chapter['name'])
+                        #wait until next chapter scraping
+                        #time.sleep(random.uniform(10.0, 15.0))
 
                         # get chapter image src
-                        chapter['img_url_list'] = find_all_img_src(html)
-                        comic_obj_list[comic_idx]['chapter'][
-                            chapter_idx] = chapter
+                        chapter['img_url_list'] = find_chapter_img_src(
+                            comic_obj_list[comic_idx]['chapter'][chapter_idx]
+                            ['url'], comic_obj_list[comic_idx]['chapter']
+                            [chapter_idx]['total_page'])
+
+                        comic_obj_list[comic_idx]['chapter'][chapter_idx] = chapter
 
                         # donwload image and get teh number of downloaded page
-                        chapter['download_page'] = save_img(
-                            save_dir_path, chapter)
-                        comic_obj_list[comic_idx]['chapter'][
-                            chapter_idx] = chapter
+                        chapter['download_page'] = save_img(save_dir_path, chapter)
+                        comic_obj_list[comic_idx]['chapter'][chapter_idx] = chapter
 
                         # create pdf
                         if comic['create_pdf']:
                             convert2pdf(
-                                save_dir_path, base_path + comic['name'] +
-                                ' ' + chapter['name'] + '.pdf')
+                                save_dir_path, base_path + comic['name'] + ' ' +
+                                chapter['name'] + '.pdf')
 
                         # update downlist.json
                         downlist_update(comic_obj_list, replace=True)
 
         if action == 3:
             break
-
 except Exception as e:
     print('Exception:', e)
 
 finally:
-    # quit driver
-    driver.quit()
-
     # get teh donwlist data
     comic_obj_list = downlist_update()
     temp_comic_obj_list = []
@@ -334,8 +279,8 @@ finally:
                     not_finish_chapter_list.append(chapter)
 
                 print(chapter['name'] + ': ' + str(chapter['download_page']) +
-                      '/' + str(chapter['total_page']) + '\t\t' +
-                      is_complete_message)
+                    '/' + str(chapter['total_page']) + '\t\t' +
+                    is_complete_message)
 
             # update not download chpater list
             comic_obj_list[comic_idx]['chapter'] = not_finish_chapter_list
