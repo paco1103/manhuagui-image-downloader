@@ -47,9 +47,8 @@ def find_chapters_url(comic_url, roll_only=False):
 
 
 #Step 2: find the chapter image url
-def find_chapter_img_src(url, num_page):
+def find_chapter_img_src(session, url, num_page):
     img_url_list = []
-    session = HTMLSession()
 
     for image_idx in range(1, num_page + 1):
         response = session.get(url + '#p=' + str(image_idx))
@@ -59,15 +58,16 @@ def find_chapter_img_src(url, num_page):
         img_tag = soup.select('#mangaBox img')
 
         response.close()
-        img_url_list.append(img_tag[0]['src'])
-        time.sleep(random.uniform(0.5, 2.0))
 
-    session.close()
+        img_url_list.append(img_tag[0]['src'])
+        print('Image url:' + str(image_idx) + '/' + str(num_page))
+
+        time.sleep(random.uniform(0.5, 2.0))
 
     return img_url_list
 
 
-# Get image from i.harmreus.com and save
+#Step 3: Get image from i.harmreus.com and save
 def save_img(img_dir_path, chapter):
     Path(img_dir_path).mkdir(parents=True, exist_ok=True)
 
@@ -196,7 +196,11 @@ def downlist_verify():
     downlist_update(temp_comic_obj_list, replace=True)
 
 
+
+
 # setting variable
+session = HTMLSession()
+
 try:
     while (True):
         action = int(input('Input action 1=get url, 2=download, 3=exit: '))
@@ -270,7 +274,7 @@ try:
                         time.sleep(random.uniform(5.0, 10.0))
 
                         # get chapter image src
-                        chapter['img_url_list'] = find_chapter_img_src(
+                        chapter['img_url_list'] = find_chapter_img_src(session, 
                             comic_obj_list[comic_idx]['chapter'][chapter_idx]
                             ['url'], comic_obj_list[comic_idx]['chapter']
                             [chapter_idx]['total_page'])
@@ -295,7 +299,10 @@ try:
         if action == 3:
             break
 except Exception as e:
+    import traceback
+    traceback.print_exc()
     print('Exception:', e)
 
 finally:
+    session.close()
     downlist_verify()
