@@ -142,6 +142,7 @@ def convert2pdf(img_dir_path, pdf_name_path):
     print('PDF completed.')
 
 
+#update the downlist.json and return the data from downlist.json
 def downlist_update(comic_obj_list=None, replace=False):
     # read existed list
     if not replace:
@@ -159,6 +160,40 @@ def downlist_update(comic_obj_list=None, replace=False):
         json.dump(comic_obj_list, f, ensure_ascii=False, indent=4)
 
     return comic_obj_list
+
+
+#verify the downlist data and remove the completed comic from downlist
+def downlist_verify():
+    # get teh donwlist data
+    comic_obj_list = downlist_update()
+    temp_comic_obj_list = []
+
+    # downloaded comic verify
+    if comic_obj_list != None:
+        for comic_idx, comic in enumerate(comic_obj_list):
+            not_finish_chapter_list = []
+
+            print(comic['name'])
+            for chapter in comic['chapter']:
+                is_complete = True if chapter['download_page'] == chapter[
+                    'total_page'] else False
+                is_complete_message = 'OK!' if is_complete else 'Error, please download again!'
+
+                if not is_complete:
+                    not_finish_chapter_list.append(chapter)
+
+                print(chapter['name'] + ': ' + str(chapter['download_page']) +
+                    '/' + str(chapter['total_page']) + '\t\t' +
+                    is_complete_message)
+
+            # update not download chpater list
+            comic_obj_list[comic_idx]['chapter'] = not_finish_chapter_list
+
+            # if chpater list = 0 then remove comic fomr downlist
+            if len(comic_obj_list[comic_idx]['chapter']) != 0:
+                temp_comic_obj_list.append(comic)
+    # update downlist.json
+    downlist_update(temp_comic_obj_list, replace=True)
 
 
 # setting variable
@@ -216,7 +251,7 @@ try:
             downlist_update(comic_obj_list)
             print('Adding success!')
 
-        # main of get chpater image url and download
+        # main of get chapters image url and download
         if action == 2:
             # get teh donwlist data
             comic_obj_list = downlist_update()
@@ -254,6 +289,8 @@ try:
 
                         # update downlist.json
                         downlist_update(comic_obj_list, replace=True)
+                
+                downlist_verify()
 
         if action == 3:
             break
@@ -261,34 +298,4 @@ except Exception as e:
     print('Exception:', e)
 
 finally:
-    # get teh donwlist data
-    comic_obj_list = downlist_update()
-    temp_comic_obj_list = []
-
-    # downloaded comic verify
-    if comic_obj_list != None:
-        for comic_idx, comic in enumerate(comic_obj_list):
-            not_finish_chapter_list = []
-
-            print(comic['name'])
-            for chapter in comic['chapter']:
-                is_complete = True if chapter['download_page'] == chapter[
-                    'total_page'] else False
-                is_complete_message = 'OK!' if is_complete else 'Error, please download again!'
-
-                if not is_complete:
-                    not_finish_chapter_list.append(chapter)
-
-                print(chapter['name'] + ': ' + str(chapter['download_page']) +
-                    '/' + str(chapter['total_page']) + '\t\t' +
-                    is_complete_message)
-
-            # update not download chpater list
-            comic_obj_list[comic_idx]['chapter'] = not_finish_chapter_list
-
-            # if chpater list = 0 then remove comic fomr downlist
-            if len(comic_obj_list[comic_idx]['chapter']) != 0:
-                temp_comic_obj_list.append(comic)
-
-    # update downlist.json
-    downlist_update(temp_comic_obj_list, replace=True)
+    downlist_verify()
