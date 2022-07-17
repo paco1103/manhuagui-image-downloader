@@ -1,3 +1,5 @@
+#Only support 3.7 version
+
 import requests
 from PIL import Image
 import io
@@ -36,7 +38,7 @@ def find_chapters_url(comic_url, roll_only=False):
                 continue
 
             details = {
-                'url': 'https://www.manhuagui.com/' + a['href'],
+                'url': 'https://tw.manhuagui.com' + a['href'],
                 'name': a['title'],
                 'total_page': int(li.find('i').text.replace('p', '')),
                 'download_page': 0,
@@ -51,6 +53,7 @@ def find_chapter_img_src(session, url, num_page):
     img_url_list = []
 
     for image_idx in range(1, num_page + 1):
+        #must use requests_html because of the ajax
         response = session.get(url + '#p=' + str(image_idx))
         response.html.render()
 
