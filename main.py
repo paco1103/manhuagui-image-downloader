@@ -18,14 +18,18 @@ from requests_html import HTMLSession
 #Step 1: Get comic all charpter url
 def find_chapters_url(comic_url, roll_only=False):
     chapters_obj_list = []
+    isAdult = False
 
     response = requests.get(comic_url)
     soup = BeautifulSoup(response.text, 'html.parser')
     response.close()
 
     comic_name = soup.select_one('.book-title h1').text
-
     chapter_list = soup.select('.chapter-list ul')
+
+    if len(chapter_list) == 0:
+        isAdult = True
+        chapter_list = get_from_audit(comic_url).select('.chapter-list ul')
 
     # loop through the chapter list
     for chapters in chapter_list:
@@ -45,28 +49,32 @@ def find_chapters_url(comic_url, roll_only=False):
                 'img_url_list': []
             }
             chapters_obj_list.append(details)
-    return comic_name, chapters_obj_list
+    return comic_name, isAdult, chapters_obj_list
 
 
 #Step 2: find the chapter image url
-def find_chapter_img_src(session, url, num_page):
+def find_chapter_img_src(isAdult, url, num_page):
     img_url_list = []
-
+    session = HTMLSession()
     for image_idx in range(1, num_page + 1):
+        image_url = url + '#p=' + str(image_idx)
         #must use requests_html because of the ajax
-        response = session.get(url + '#p=' + str(image_idx))
-        response.html.render()
+        if isAdult:
+            soup = get_from_audit(image_url)
+            sleep_time = random.uniform(10.0, 15.0)
+        else:
+            response = session.get(image_url)
+            response.html.render()
+            soup = BeautifulSoup(response.html.html, features='html.parser')
+            response.close()
+            sleep_time = random.uniform(0.5, 2.0)
 
-        soup = BeautifulSoup(response.html.html, features='html.parser')
         img_tag = soup.select('#mangaBox img')
-
-        response.close()
-
         img_url_list.append(img_tag[0]['src'])
         print('Image url:' + str(image_idx) + '/' + str(num_page))
-
-        time.sleep(random.uniform(0.5, 2.0))
-
+        time.sleep(sleep_time)
+    
+    session.close()
     return img_url_list
 
 
@@ -105,6 +113,21 @@ def save_img(img_dir_path, chapter):
 
     print('Chapter saving complete!')
     return download_page
+
+
+def get_from_audit(url):
+    session = HTMLSession()
+    response = session.get(url)
+    script = """
+        try {
+            document.getElementById('checkAdult').click();
+        } catch (error) {
+        }
+    """
+    response.html.render(script=script, reload=True)
+    response.close()
+    session.close()
+    return BeautifulSoup(response.html.html, features='html.parser')
 
 
 # TODO, modify to save from memory
@@ -150,7 +173,7 @@ def downlist_update(comic_obj_list=None, replace=False):
     # read existed list
     if not replace:
         try:
-            with open('downlist.json', 'r', encoding="utf-8") as f:
+            with open('data/downlist.json', 'r', encoding="utf-8") as f:
                 if comic_obj_list != None:
                     comic_obj_list += json.load(f)
                 else:
@@ -159,7 +182,7 @@ def downlist_update(comic_obj_list=None, replace=False):
             print('downlist.json not exist, auto create')
 
     # update list
-    with open('downlist.json', 'w', encoding="utf-8") as f:
+    with open('data/downlist.json', 'w', encoding="utf-8") as f:
         json.dump(comic_obj_list, f, ensure_ascii=False, indent=4)
 
     return comic_obj_list
@@ -201,8 +224,6 @@ def downlist_verify():
 
 
 
-# setting variable
-session = HTMLSession()
 
 try:
     while (True):
@@ -218,7 +239,7 @@ try:
 
             # get comic all chapter data
             print('start getting')
-            comic_name, chapters_obj_list = find_chapters_url(comic_url,
+            comic_name, isAdult, chapters_obj_list = find_chapters_url(comic_url,
                                                             roll_only=roll_only)
 
             # print all chapter name
@@ -251,9 +272,10 @@ try:
                 'Create PDF?  (True/False) ') == 'False' else True
             comic_obj_list = [{
                 'name': comic_name,
+                'isAdult': isAdult,
                 'create_pdf': create_pdf,
                 'url': comic_url,
-                'chapter': chapters_obj_list,
+                'chapter': chapters_obj_list
             }]
             downlist_update(comic_obj_list)
             print('Adding success!')
@@ -266,7 +288,7 @@ try:
             # None = no file
             if comic_obj_list != None:
                 for comic_idx, comic in enumerate(comic_obj_list):
-                    base_path = comic['name'] + '/'
+                    base_path = 'data/' + comic['name'] + '/'
 
                     for chapter_idx, chapter in enumerate(comic['chapter']):
 
@@ -277,8 +299,7 @@ try:
                         time.sleep(random.uniform(5.0, 10.0))
 
                         # get chapter image src
-                        chapter['img_url_list'] = find_chapter_img_src(session, 
-                            comic_obj_list[comic_idx]['chapter'][chapter_idx]
+                        chapter['img_url_list'] = find_chapter_img_src(comic['isAdult'], comic_obj_list[comic_idx]['chapter'][chapter_idx]
                             ['url'], comic_obj_list[comic_idx]['chapter']
                             [chapter_idx]['total_page'])
 
@@ -301,11 +322,11 @@ try:
 
         if action == 3:
             break
+        
 except Exception as e:
     import traceback
     traceback.print_exc()
     print('Exception:', e)
 
 finally:
-    session.close()
     downlist_verify()
