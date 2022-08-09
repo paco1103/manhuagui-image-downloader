@@ -61,7 +61,7 @@ def find_chapter_img_src(isAdult, url, num_page):
         #must use requests_html because of the ajax
         if isAdult:
             soup = get_from_audit(image_url)
-            sleep_time = random.uniform(10.0, 60.0)
+            sleep_time = random.uniform(20.0, 60.0)
         else:
             response = session.get(image_url)
             response.html.render()
@@ -72,7 +72,6 @@ def find_chapter_img_src(isAdult, url, num_page):
         img_tag = soup.select('#mangaBox img')
         img_url_list.append(img_tag[0]['src'])
         print('Image url:' + str(image_idx) + '/' + str(num_page))
-        break
         time.sleep(sleep_time)
     
     session.close()
@@ -108,9 +107,6 @@ def save_img(img_dir_path, chapter):
                 try_again = False
 
             except:
-                headers = {
-                    'Referer': 'https://www.manhuagui.com',
-                }
                 print('Fail, auto download again')
                 try_again = True
                 time.sleep(random.uniform(10.0, 20.0))
