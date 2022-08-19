@@ -57,22 +57,32 @@ def find_chapter_img_src(isAdult, url, num_page):
     img_url_list = []
     session = HTMLSession()
     for image_idx in range(1, num_page + 1):
-        image_url = url + '#p=' + str(image_idx)
-        #must use requests_html because of the ajax
-        if isAdult:
-            soup = get_from_audit(image_url)
-            sleep_time = random.uniform(20.0, 60.0)
-        else:
-            response = session.get(image_url)
-            response.html.render()
-            soup = BeautifulSoup(response.html.html, features='html.parser')
-            response.close()
-            sleep_time = random.uniform(0.5, 2.0)
+        try_again = True
+        while try_again:
+            try:
+                image_url = url + '#p=' + str(image_idx)
+                #must use requests_html because of the ajax
+                if isAdult:
+                    soup = get_from_audit(image_url)
+                    sleep_time = random.uniform(20.0, 60.0)
+                else:
+                    response = session.get(image_url)
+                    response.html.render()
+                    soup = BeautifulSoup(response.html.html, features='html.parser')
+                    response.close()
+                    sleep_time = random.uniform(0.5, 2.0)
 
-        img_tag = soup.select('#mangaBox img')
-        img_url_list.append(img_tag[0]['src'])
-        print('Image url:' + str(image_idx) + '/' + str(num_page))
+                img_tag = soup.select('#mangaBox img')
+                img_url_list.append(img_tag[0]['src'])
+                print('Image url:' + str(image_idx) + '/' + str(num_page))
+                try_again = False
+            except:
+                print("EXCEPTION!!!!")
+                try_again = True
+                time.sleep(sleep_time)
         time.sleep(sleep_time)
+
+
     
     session.close()
     return img_url_list
@@ -88,7 +98,6 @@ def save_img(img_dir_path, chapter):
 
     download_page = 0
     img_url_list = chapter['img_url_list']
-    print(img_url_list)
     for idx, url in enumerate(img_url_list):
         try_again = True
         while try_again:
@@ -174,7 +183,7 @@ def downlist_update(comic_obj_list=None, replace=False):
     # read existed list
     if not replace:
         try:
-            with open('data/downlist.json', 'r', encoding="utf-8") as f:
+            with open('./data/downlist.json', 'r', encoding="utf-8") as f:
                 if comic_obj_list != None:
                     comic_obj_list += json.load(f)
                 else:
@@ -183,7 +192,7 @@ def downlist_update(comic_obj_list=None, replace=False):
             print('downlist.json not exist, auto create')
 
     # update list
-    with open('data/downlist.json', 'w', encoding="utf-8") as f:
+    with open('./data/downlist.json', 'w', encoding="utf-8") as f:
         json.dump(comic_obj_list, f, ensure_ascii=False, indent=4)
 
     return comic_obj_list
@@ -314,7 +323,7 @@ try:
                         if comic['create_pdf']:
                             convert2pdf(
                                 save_dir_path, base_path + comic['name'] + ' ' +
-                                chapter['name'] + '.pdf')
+                                chapter['name'].replace('/', ' ') + '.pdf')
 
                         # update downlist.json
                         downlist_update(comic_obj_list, replace=True)
