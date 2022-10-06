@@ -154,6 +154,7 @@ def convert2pdf(img_dir_path, pdf_name_path):
     pdf = FPDF()
 
     for img_path in img_path_list:
+        
         image = Image.open(img_path)
 
         # dpi to mm
@@ -165,14 +166,24 @@ def convert2pdf(img_dir_path, pdf_name_path):
         # get page orientation from image size
         orientation = 'P' if width < height else 'L'
         pdf.add_page(orientation=orientation)
+        
+        # scale up / down image for full screen
+        scale = pdf_size[orientation]['h'] / height if orientation == 'P' else pdf_size[orientation]['w'] / width
+        scale *= 0.95
+        width, height = width * scale, height * scale
 
-        width = width if width < pdf_size[orientation]['w'] else pdf_size[
-            orientation]['w']
-        height = height if height < pdf_size[orientation]['h'] else pdf_size[
-            orientation]['h']
+        # if the other side is larger than pdf, then scale down
+        if orientation == 'P' and width > pdf_size[orientation]['w']:
+            scale = pdf_size[orientation]['w'] / width
+            width, height = width * scale, height * scale
+        elif orientation == 'L' and height > pdf_size[orientation]['h']:
+            scale = pdf_size[orientation]['h'] / height
+            width, height = width * scale, height * scale
 
-        pdf.image(img_path, pdf_padding, pdf_padding, width - pdf_padding * 2,
-                  height - pdf_padding * 2)
+        width_padding = (pdf_size[orientation]['w'] - width) / 2
+        height_padding = (pdf_size[orientation]['h'] - height) / 2
+
+        pdf.image(img_path, width_padding, height_padding, width, height)
 
     pdf.output(pdf_name_path, 'F')
     print('PDF completed.')
@@ -281,7 +292,7 @@ try:
             create_pdf = False if input(
                 'Create PDF?  (True/False) ') == 'False' else True
             comic_obj_list = [{
-                'name': comic_name,
+                'name': comic_name.replace('/', ' ').replace(':', '：'),
                 'isAdult': isAdult,
                 'create_pdf': create_pdf,
                 'url': comic_url,
@@ -323,7 +334,7 @@ try:
                         if comic['create_pdf']:
                             convert2pdf(
                                 save_dir_path, base_path + comic['name'] + ' ' +
-                                chapter['name'].replace('/', ' ') + '.pdf')
+                                chapter['name'] + '.pdf')
 
                         # update downlist.json
                         downlist_update(comic_obj_list, replace=True)
