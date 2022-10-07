@@ -169,7 +169,7 @@ def convert2pdf(img_dir_path, pdf_name_path):
         
         # scale up / down image for full screen
         scale = pdf_size[orientation]['h'] / height if orientation == 'P' else pdf_size[orientation]['w'] / width
-        scale *= 0.95
+        scale *= 0.99
         width, height = width * scale, height * scale
 
         # if the other side is larger than pdf, then scale down
